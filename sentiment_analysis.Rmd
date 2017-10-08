@@ -1,0 +1,15 @@
+---
+title: "Data Mining Group project: Ali, Li, Rodrigo"
+output: html_notebook
+---
+## You may need to install this, so uncomment the next 2 lines and run once.
+# library(devtools)
+# install_github("jeroen/mongolite")
+library(mongolite)
+
+## Connect to the DB, please replace username and password by the ones shared on the forum
+con <- mongo("reviews", url = "mongodb://<<username>>:<<password>>@ds113445.mlab.com:13445/<<dbname>>")
+
+# Load all reviews
+reviews <- con$find()
+summary(reviews)
