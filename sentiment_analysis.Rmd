@@ -13,7 +13,7 @@ library(magrittr)
 library(dplyr)
 
 ## Connect to the DB, please replace username and password by the ones shared on the forum
-con <- mongo("reviews", url = "mongodb://datamining:datamining@ds113445.mlab.com:13445/heroku_8tv2vqr4")
+con <- mongo("reviews", url = "mongodb://{username}:{password}@ds113445.mlab.com:13445/{database}")
 
 # Load all reviews
 reviews <- con$find()
