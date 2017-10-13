@@ -63,6 +63,7 @@ names(scores) <- relevant_attributes
 str(scores)
 
 for(i in sqldf("select distinct(chapter) as 'chapter' from score_breakdown_clean")$chapter){
+  s <- list()
   s$review <- i
   s$score <- sqldf(sprintf("select distinct(score) as 'score' from score_breakdown_clean where chapter = '%s' ", i))$score
   
@@ -77,4 +78,4 @@ for(i in sqldf("select distinct(chapter) as 'chapter' from score_breakdown_clean
   scores <- rbind(scores, data.frame(s))
 }
 
-print(scores[8:(9+length(sentiment_list))])
+print(scores)
