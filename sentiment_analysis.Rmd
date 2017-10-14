@@ -6,11 +6,36 @@ output: html_notebook
 # library(devtools)
 # install_github("jeroen/mongolite")
 library(mongolite)
+library(tidyverse)      # data manipulation & plotting
+library(stringr)        # text cleaning and regular expressions
+library(tidytext)       # provides additional text mining functions
+library(magrittr)
+library(dplyr)
 
 ## Connect to the DB, please replace username and password by the ones shared on the forum
-con <- mongo("reviews", url = "mongodb://<<username>>:<<password>>@ds113445.mlab.com:13445/<<dbname>>")
+con <- mongo("reviews", url = "mongodb://{username}:{password}@ds113445.mlab.com:13445/{database}")
 
 
 # Load all reviews
 reviews <- con$find()
-summary(reviews)
+
+reviews_breakdown <- tibble()
+
+for(i in 1){
+  r <- reviews[i,]
+  clean <- tibble(chapter=i, text=r$reviewText) %>%
+    unnest_tokens(word, text) %>%
+    anti_join(stop_words)
+  
+  reviews_breakdown <- rbind(reviews_breakdown, clean)
+}
+
+reviews_breakdown <- reviews_breakdown %>% group_by(chapter, word) %>% count(word)
+
+reviews[1,]$reviewText
+
+reviews_breakdown %>%
+  right_join(get_sentiments("nrc")) %>%
+  filter(!is.na(sentiment)) %>%
+  count(sentiment, sort = TRUE)
+
