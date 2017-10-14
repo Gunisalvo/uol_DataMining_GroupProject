@@ -1,0 +1,123 @@
+#####################   Ceaning Phase ###################################
+
+
+# Loading the required packages
+# Load these packages one by one, where you could need to install some of them before loading it
+
+library(data.table)	# Required for rbindlist
+library(dplyr)		# Required to use the pipes %>% and some table manipulation commands
+library(ggplot2)	# Required for plotting
+library(stringr)
+library(tm)
+library(magrittr)	# Required to use the pipes %>%
+library(textcat)
+library(tidytext)
+library(RTextTools)
+
+# clean the dataset by selecting the necessary variables
+
+reviews_data <- data.frame(reviews$reviewerID, reviews$reviewText, reviews$overall)
+
+
+#Rename the attributes 
+colnames(reviews_data)[1] <- "review_ID"
+colnames(reviews_data)[2] <- "review"
+colnames(reviews_data)[3] <- "overall"
+
+
+#Generate new IDs for reviews that start from 1
+reviews_data$review_ID <- seq.int(nrow(reviews_data))
+
+#use data.table package to enhance analysis 
+reviews_data <- data.table(reviews_data)
+
+# detect the review language
+reviews_data$language <- as.factor(textcat(reviews_data$review))
+
+#select the reviews that written in english language
+# Where our dataset become 36200 rows instead of 37126
+
+reviews_data <- reviews_data[language == "english"]
+
+#Remove language variable
+reviews_data$language <- NULL
+
+
+# Eleminate the reviews with less than 5 characters
+reviews_data <- reviews_data[length(reviews_data$review) >= 5]
+
+# convert the overall values into integers
+reviews_data$overall <- as.integer(reviews_data$overall)
+
+
+
+
+
+#######################Exploratory data analysis##########################
+
+This is extra part to analysis our dataset
+
+# visualize the distribution of overall score using batplot package
+
+barplot(table(as.factor(reviews_data$overall)),
+        ylim = c(0,20000), 
+        main = "Distribution of Overall Score")
+		
+
+# visualize the distribution of review length using histogram
+		
+reviews_data$review.length = nchar(as.character(reviews_data$review))
+hist(reviews_data$review.length, 
+     ylim = c(0,26000), 
+     main = "Distribution of review length" )
+		
+
+# While most of reviews are more than 90000 characters, I decide to visualize the reviews than have less than 90000 characters of length		
+		
+n <- nrow(reviews_data[reviews_data$review.length >= 9000])
+reviews_data <- reviews_data[reviews_data$review.length <= 9000]
+ hist(reviews_data$review.length, 
+      ylim = c(0,26000), 
+      main = "Distribution of review length")
+
+
+
+# To display the Distribution of review length by overall score
+	  
+with(reviews_data, boxplot(review.length~overall, 
+     main = "Distribution of review length by overall score"))
+		
+
+###################### Loading Sentiment Lexicons #############################
+
+
+# Loading the first sentiment score lexicon
+AFINN <- sentiments %>%
+  filter(lexicon == "AFINN") %>%
+  select(word, afinn_score = score)
+head(AFINN)
+
+# Loading the second sentiment score lexicon
+Bing <- sentiments %>%
+  filter(lexicon == "bing") %>%
+  select(word, bing_sentiment = sentiment)
+head(Bing)
+
+
+
+#######################   Tidy Up ##############################
+
+# sentiment scores for each word
+# This code didn't work with me where I got this error "Error in check_input(x) : 
+  Input must be a character vector of any length or a list of character
+  vectors, each of which has a length of 1."
+  
+  
+review_words <- reviews_data %>%
+  unnest_tokens(word, review) %>%
+  select(-c(review, review.length)) %>%
+  left_join(AFINN, by = "word") %>%
+  left_join(Bing, by = "word")
+  
+  
+  

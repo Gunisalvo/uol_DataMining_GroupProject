@@ -10,6 +10,7 @@ library(mongolite)
 ## Connect to the DB, please replace username and password by the ones shared on the forum
 con <- mongo("reviews", url = "mongodb://<<username>>:<<password>>@ds113445.mlab.com:13445/<<dbname>>")
 
+
 # Load all reviews
 reviews <- con$find()
 summary(reviews)
