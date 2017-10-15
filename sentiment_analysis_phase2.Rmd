@@ -23,28 +23,58 @@ con <- mongo("reviews", url = "you know what to do")
 # Load all reviews
 reviews <- con$find()
 
-reviews_breakdown <- tibble()
+word_count <- tibble()
 
-for(i in 1:2){
+for(i in 1:10){
   r <- reviews[i,]
   clean <- tibble(chapter=i, text=r$reviewText) %>%
     unnest_tokens(word, text) %>%
     anti_join(stop_words)
+    
+  clean$score <- r$overall
 
-  reviews_breakdown <- rbind(reviews_breakdown, clean)
+  word_count <- rbind(word_count, clean)
 }
 
-reviews_breakdown <- reviews_breakdown %>% group_by(chapter, word) %>% count(word)
-colnames(reviews_breakdown)[colnames(reviews_breakdown) == 'n'] <- 'word_count'
+word_count_breakdown <- word_count %>% group_by(chapter, word, score) %>% count(word)
+colnames(word_count_breakdown)[colnames(word_count_breakdown) == 'n'] <- 'word_count'
 
-reviews_breakdown
-# reviews[1,]$reviewText
-
-scores <- reviews_breakdown %>%
+score_breakdown <- word_count_breakdown %>%
   right_join(get_sentiments("nrc")) %>%
   filter(!is.na(sentiment)) %>%
   count(sentiment, sort = TRUE)
-colnames(scores)[colnames(scores) == 'n'] <- 'word_count'
+colnames(score_breakdown)[colnames(score_breakdown) == 'n'] <- 'word_count'
 
-# scores
-sqldf("select chapter, sentiment, sum(word_count) as 'count' from scores where chapter <> 'NA' group by chapter, sentiment")
+score_breakdown_clean <- sqldf("select chapter, sentiment, score, sum(word_count) as 'count' from score_breakdown where chapter <> 'NA' group by chapter, sentiment, score")
+
+score_breakdown_clean
+
+sentiment_list <- (sqldf("select distinct(sentiment) from score_breakdown_clean where chapter <> 'NA' group by sentiment"))$sentiment
+
+relevant_attributes <- c(c("review", "score"), sentiment_list)
+
+print(relevant_attributes)
+
+scores <- as.data.frame(
+  setNames(replicate(length(relevant_attributes), integer()),relevant_attributes[1:length(relevant_attributes)])
+)
+names(scores) <- relevant_attributes
+
+str(scores)
+
+for(i in sqldf("select distinct(chapter) as 'chapter' from score_breakdown_clean")$chapter){
+  s$review <- i
+  s$score <- sqldf(sprintf("select distinct(score) as 'score' from score_breakdown_clean where chapter = '%s' ", i))$score
+  
+  for(sent in sentiment_list){
+    value <- sqldf(sprintf("select distinct(count) as 'count' from score_breakdown_clean where chapter = '%s' and sentiment = '%s' ", i, sent))$count
+    if(length(value) == 0){
+      s[[sent]] <- 0
+    }else{
+      s[[sent]] <- value
+    }
+  }
+  scores <- rbind(scores, data.frame(s))
+}
+
+print(scores[8:(9+length(sentiment_list))])
