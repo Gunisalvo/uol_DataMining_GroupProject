@@ -1,0 +1,50 @@
+---
+title: "Data Mining Group project: Ali, Li, Rodrigo"
+output: html_notebook
+---
+## You may need to install this, so uncomment the next 2 lines and run once.
+library(devtools)
+install_github("jeroen/mongolite")
+install.packages('rvest')
+install.packages('xml2')
+install.packages('tidytext')
+install.packages('tidyverse')
+install_github("ggrothendieck/sqldf")
+library(mongolite)
+library(tidyverse)      # data manipulation & plotting
+library(stringr)        # text cleaning and regular expressions
+library(tidytext)       # provides additional text mining functions
+library(magrittr)
+library(sqldf)
+
+## Connect to the DB, please replace username and password by the ones shared on the forum
+con <- mongo("reviews", url = "you know what to do")
+
+# Load all reviews
+reviews <- con$find()
+
+reviews_breakdown <- tibble()
+
+for(i in 1:2){
+  r <- reviews[i,]
+  clean <- tibble(chapter=i, text=r$reviewText) %>%
+    unnest_tokens(word, text) %>%
+    anti_join(stop_words)
+
+  reviews_breakdown <- rbind(reviews_breakdown, clean)
+}
+
+reviews_breakdown <- reviews_breakdown %>% group_by(chapter, word) %>% count(word)
+colnames(reviews_breakdown)[colnames(reviews_breakdown) == 'n'] <- 'word_count'
+
+reviews_breakdown
+# reviews[1,]$reviewText
+
+scores <- reviews_breakdown %>%
+  right_join(get_sentiments("nrc")) %>%
+  filter(!is.na(sentiment)) %>%
+  count(sentiment, sort = TRUE)
+colnames(scores)[colnames(scores) == 'n'] <- 'word_count'
+
+# scores
+sqldf("select chapter, sentiment, sum(word_count) as 'count' from scores where chapter <> 'NA' group by chapter, sentiment")
