@@ -18,14 +18,14 @@ library(magrittr)
 library(sqldf)
 
 ## Connect to the DB, please replace username and password by the ones shared on the forum
-con <- mongo("reviews", url = "you know what to do")
+con <- mongo("reviews", url = "mongodb://datamining:datamining@ds113445.mlab.com:13445/heroku_8tv2vqr4")
 
 # Load all reviews
 reviews <- con$find()
 
 word_count <- tibble()
 
-for(i in 1:10){
+for(i in 1:500){
   r <- reviews[i,]
   clean <- tibble(chapter=i, text=r$reviewText) %>%
     unnest_tokens(word, text) %>%
@@ -78,4 +78,23 @@ for(i in sqldf("select distinct(chapter) as 'chapter' from score_breakdown_clean
   scores <- rbind(scores, data.frame(s))
 }
 
-print(scores)
+set.seed(123)
+
+train_sample <- sample(nrow(scores), nrow(scores) - (nrow(scores) %/% 10))
+
+scores.train_scores <- scores[train_sample,]$score
+scores.train <- scores[train_sample,][-1:-2]
+scores.train_pn <- scores[train_sample,][9] - scores[train_sample,][8]
+scores.test_scores <- scores[-train_sample,]$score
+scores.test <- scores[-train_sample,][-1:-2]
+scores.test_pn <- scores[-train_sample,][9] - scores[-train_sample,][9]
+
+library(class)
+
+scores.classifier <- knn(train=scores.train, test=scores.test, cl=scores.train_scores, k=10)
+
+library(gmodels)
+
+CrossTable(x=scores.test_scores, y=scores.classifier, prop.chisq=FALSE)
+
+scatter.smooth(x=scores.train_pn$positive, y=scores.train_scores, main="Sentiment ~ Score")
