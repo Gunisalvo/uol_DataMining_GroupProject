@@ -91,10 +91,27 @@ scores.test_pn <- scores[-train_sample,][9] - scores[-train_sample,][9]
 
 library(class)
 
-scores.classifier <- knn(train=scores.train, test=scores.test, cl=scores.train_scores, k=10)
+scores.eucledian <- knn(train=scores.train, test=scores.test, cl=scores.train_scores, k=5)
 
 library(gmodels)
 
-CrossTable(x=scores.test_scores, y=scores.classifier, prop.chisq=FALSE)
+CrossTable(x=scores.test_scores, y=scores.eucledian, prop.chisq=FALSE)
 
-scatter.smooth(x=scores.train_pn$positive, y=scores.train_scores, main="Sentiment ~ Score")
+scatter.smooth(x=scores.train_scores, y=scores.train_pn$positive, xlab = "score", ylab = "sentiment" ,main="Sentiment ~ Score")
+
+install.packages("KernelKnn")
+library(KernelKnn)
+
+scores.cosine <- KernelKnn(scores.train, TEST_data = scores.test, y = scores.train_scores, k = 10, method = 'canberra', weights_function = 'cosine', Levels = unique(scores.train_scores), regression=F)
+
+scores.cosine_result <- list()
+
+for(i in 1:nrow(scores.cosine)){
+  x <- NA
+  if(!is.nan(max(scores.cosine[i,]))){
+    x <- which(scores.cosine[i,]==max(scores.cosine[i,]))
+  }
+  scores.cosine_result <- rbind(scores.cosine_result, x)
+}
+
+CrossTable(x=scores.test_scores, y=unlist(scores.cosine_result), prop.chisq=FALSE)
